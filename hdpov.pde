@@ -30,22 +30,26 @@
 #include                <avr/interrupt.h>
 #include                <util/delay.h>
 
+
 // arduino redefines int, which bugs out stdio.h (needed for sscanf)
 // see: http://www.arduino.cc/cgi-bin/yabb2/YaBB.pl?num=1207028702/3
 #undef int
 #include                <stdio.h>
 
+
+#include "RTClib.h"
+
 // The number of "pie slices" that make up a single image around the platter
 #define DIVISIONS       0xFF
 
 // Red pin, on PORTD
-#define RED             3
+#define RED_PIN             3
 
 // Green Pin, on PORTD
-#define GRN             4
+#define GRN_PIN             4
 
 // Blue pin, on PORTD
-#define BLU             5
+#define BLU_PIN             5
 
 // Macro used to communicate serial status
 #define OK              1
@@ -54,7 +58,21 @@
 #define PAGES           2
 
 // Helper macro to build LED values for PORTD
-#define RGB(R,G,B)      (R << RED | G << GRN | B << BLU)
+#define RGB(R,G,B)      (R << RED_PIN | G << GRN_PIN | B << BLU_PIN)
+
+#define BLACK  RGB(0,0,0)
+#define BLUE   RGB(0,0,1)
+#define GREEN  RGB(0,1,0)
+#define AQUA   RGB(0,1,1)
+#define RED    RGB(1,0,0)
+#define VIOLET RGB(1,0,1)
+#define YELLOW RGB(1,1,0)
+#define WHITE  RGB(1,1,1)
+
+char hour_color = BLUE;
+char minute_color = GREEN;
+char second_color = RED;
+char background_color = WHITE;
 
 // The timers are configured with the prescaler set to 8, which means every
 // 8 clock cycles equals on tick on the counter.  This is a constant to help
@@ -176,6 +194,38 @@ void __inline__ flip_to_next_page(void)
  **/
 
 // Simple test pattern displaying all the available colors, evenly spaced
+void show_time(void)
+{
+  int x;
+
+  DateTime now = RTC.now();
+
+  int second_hand_position = now.second() * divisions / 60;
+  int minute_hand_position = now.minute() * divisions / 60;
+  int hour_hand_position = now.hour() * divisions / 12;
+
+  for(x = 0; x < divisions; x++)
+  {
+      if (x == hour_hand_position)
+      {
+          write_page(x, hour_color);
+      }
+      else if (x == minute_hand_position)
+      {
+          write_page(x, minute_color);
+      }
+      else if (x == second_hand_position)
+      {
+          write_page(x, second_color);
+      }
+      else
+      {
+          write_page(x, background_color);
+      }
+    }
+}
+
+// Simple test pattern displaying all the available colors, evenly spaced
 void InitTestPattern1(void)
 {
   int x;
@@ -272,9 +322,9 @@ void SetupHardware(void)
 
   Serial.print("[");
   // setup output
-  pinMode(RED, OUTPUT);
-  pinMode(GRN, OUTPUT);
-  pinMode(BLU, OUTPUT);
+  pinMode(RED_PIN, OUTPUT);
+  pinMode(GRN_PIN, OUTPUT);
+  pinMode(BLU_PIN, OUTPUT);
   Serial.print("L");
 
   // disable global interrupts
@@ -349,11 +399,11 @@ void report_status_to_serial(void)
   Serial.print("Current Page: ");
   Serial.println((!(page_hidden)), DEC);
   Serial.print("Red: 0x");
-  Serial.println(_BV(RED), HEX);
+  Serial.println(_BV(RED_PIN), HEX);
   Serial.print("Green: 0x");
-  Serial.println(_BV(GRN), HEX);
+  Serial.println(_BV(GRN_PIN), HEX);
   Serial.print("Blue: 0x");
-  Serial.println(_BV(BLU), HEX);
+  Serial.println(_BV(BLU_PIN), HEX);
 }
 
 // Read the entire visible page to the serial port, printing
@@ -431,18 +481,18 @@ void RunStartupDisplay(void)
             {
                 case 0:
                     /* red */
-                    write_page(slice, _BV(RED));
-                    write_page(slice+1, _BV(RED));
+                    write_page(slice, _BV(RED_PIN));
+                    write_page(slice+1, _BV(RED_PIN));
                     break;
                 case 1:
                     /* green */
-                    write_page(slice, _BV(GRN));
-                    write_page(slice+1, _BV(GRN));
+                    write_page(slice, _BV(GRN_PIN));
+                    write_page(slice+1, _BV(GRN_PIN));
                     break;
                 case 2:
                     /* blue */
-                    write_page(slice, _BV(BLU));
-                    write_page(slice+1, _BV(BLU));
+                    write_page(slice, _BV(BLU_PIN));
+                    write_page(slice+1, _BV(BLU_PIN));
                     break;
                 case 3:
                     /* black */
